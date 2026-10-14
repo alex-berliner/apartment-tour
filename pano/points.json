@@ -1,0 +1,107 @@
+[
+ {
+  "id": "living_1",
+  "label": "Living/Dining - closet corner",
+  "x": -150,
+  "y": 330,
+  "z": 160
+ },
+ {
+  "id": "living_2",
+  "label": "Living/Dining - by the windows",
+  "x": -140,
+  "y": -30,
+  "z": 160
+ },
+ {
+  "id": "living_3",
+  "label": "Living/Dining - by the console",
+  "x": -345,
+  "y": 300,
+  "z": 160
+ },
+ {
+  "id": "entry",
+  "label": "Entry",
+  "x": -470,
+  "y": 320,
+  "z": 160
+ },
+ {
+  "id": "office_1",
+  "label": "Office - from the entry",
+  "x": -470,
+  "y": 240,
+  "z": 160
+ },
+ {
+  "id": "office_2",
+  "label": "Office - by the bay",
+  "x": -720,
+  "y": 200,
+  "z": 160
+ },
+ {
+  "id": "office_3",
+  "label": "Office - in front of the sofa",
+  "x": -560,
+  "y": 70,
+  "z": 160
+ },
+ {
+  "id": "kitchen_1",
+  "label": "Kitchen - centre",
+  "x": 100,
+  "y": 150,
+  "z": 160
+ },
+ {
+  "id": "kitchen_2",
+  "label": "Kitchen - by the fridge",
+  "x": 250,
+  "y": 180,
+  "z": 160
+ },
+ {
+  "id": "kitchen_3",
+  "label": "Kitchen - by the range",
+  "x": 20,
+  "y": 60,
+  "z": 160
+ },
+ {
+  "id": "bedroom_1",
+  "label": "Bedroom - by the door",
+  "x": 400,
+  "y": 200,
+  "z": 160
+ },
+ {
+  "id": "bedroom_2",
+  "label": "Bedroom - by the closet",
+  "x": 640,
+  "y": 200,
+  "z": 160
+ },
+ {
+  "id": "bedroom_3",
+  "label": "Bedroom - bedside",
+  "x": 400,
+  "y": 80,
+  "z": 160
+ },
+ {
+  "id": "bath_1",
+  "label": "Bathroom - door",
+  "x": 150,
+  "y": 330,
+  "z": 160
+ },
+ {
+  "id": "bath_2",
+  "label": "Bathroom - by the vanity",
+  "x": 110,
+  "y": 370,
+  "z": 160
+ }
+]

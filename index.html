@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apartment Tour</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: system-ui, sans-serif; touch-action: none; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity .35s; pointer-events: none; }
+  #bar { position: fixed; left: 12px; bottom: 12px; color: #eee; font-size: 14px; background: rgba(0,0,0,.55); padding: 8px 12px; border-radius: 8px; }
+  #bar select { font-size: 14px; max-width: 46vw; }
+  #bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; max-width: calc(100vw - 48px); }
+  #note { position: fixed; right: 12px; top: 12px; color: #ddd; font-size: 13px; background: rgba(0,0,0,.55); padding: 6px 10px; border-radius: 8px; max-width: 46vw; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="fade"></div>
+<div id="bar"><span>Drag to look · click floor rings to move</span><label>Version <select id="config"></select></label><label>Spot <select id="where"></select></label></div>
+<div id="note"></div>
+<script type="module">
+import * as THREE from 'three';
+const CONFIGS = [
+  { id: 'current_evening', label: 'As furnished — evening', note: 'Current furniture and white walls, lights at the optimised evening levels.' },
+  { id: 'paint_evening', label: 'Recommended paint — evening', note: 'Olive open plan and office, warm taupe bedroom, terracotta bathroom.' },
+  { id: 'style_midcentury', label: 'Style study A — Collected Mid-Century', note: 'Walnut credenzas, Eames-style lounge chair, round coffee table, walnut dining chairs, mustard and teal accents, white walls.' },
+  { id: 'style_library', label: 'Style study B — Quiet Library', note: 'Deep olive walls, tall dark bookcase, Persian rug, tall-back dining chairs, oxblood / tobacco / forest textiles.' },
+  { id: 'style_edited', label: 'Style study C — Edited Heritage', note: 'Current palette with a third less decor, an ivory boucle chair and a round oak coffee table.' } ];
+const Q = new URLSearchParams(location.search);
+let TOUR = CONFIGS.some(c => c.id === Q.get('v')) ? Q.get('v') : CONFIGS[0].id;
+const cfgSel = document.getElementById('config'), noteEl = document.getElementById('note');
+for (const c of CONFIGS) cfgSel.add(new Option(c.label, c.id));
+cfgSel.value = TOUR;
+const PTS = await (await fetch('pano/points.json')).json();
+const BYID = Object.fromEntries(PTS.map(p => [p.id, p]));
+const LINKS = {
+  living_1: ['living_2', 'living_3', 'entry'], living_2: ['living_1', 'living_3', 'kitchen_3'], living_3: ['living_1', 'living_2', 'entry'],
+  entry: ['living_3', 'living_1', 'office_1'],
+  office_1: ['entry', 'office_2', 'office_3'], office_2: ['office_1', 'office_3'], office_3: ['office_1', 'office_2'],
+  kitchen_3: ['living_2', 'kitchen_1'], kitchen_1: ['kitchen_3', 'kitchen_2', 'bath_1', 'bedroom_1'], kitchen_2: ['kitchen_1', 'bedroom_1'],
+  bedroom_1: ['kitchen_1', 'bedroom_2', 'bedroom_3'], bedroom_2: ['bedroom_1', 'bedroom_3'], bedroom_3: ['bedroom_1', 'bedroom_2'],
+  bath_1: ['kitchen_1', 'bath_2'], bath_2: ['bath_1'] };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100);
+// panorama sphere: Blender renders the image centre along +Y (plan "up") = three.js -Z
+const sphereGeo = new THREE.SphereGeometry(50, 96, 64); sphereGeo.scale(-1, 1, 1);
+const sphereMat = new THREE.MeshBasicMaterial(); const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+sphere.rotation.y = -Math.PI / 2; scene.add(sphere);
+const markers = new THREE.Group(); scene.add(markers);
+const ringGeo = new THREE.RingGeometry(0.16, 0.24, 48); ringGeo.rotateX(-Math.PI / 2);
+const discGeo = new THREE.CircleGeometry(0.16, 48); discGeo.rotateX(-Math.PI / 2);
+const texLoader = new THREE.TextureLoader();
+const sel = document.getElementById('where');
+for (const p of PTS) sel.add(new Option(p.label, p.id));
+let yaw = 0, pitch = 0, here = null;
+const fade = document.getElementById('fade');
+
+async function go(id) {
+  fade.style.opacity = 1;
+  const tex = await texLoader.loadAsync(`pano/${TOUR}/${id}.jpg`);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  if (sphereMat.map) sphereMat.map.dispose();
+  sphereMat.map = tex; sphereMat.needsUpdate = true;
+  here = BYID[id]; sel.value = id;
+  noteEl.textContent = CONFIGS.find(c => c.id === TOUR).note;
+  history.replaceState(null, '', `?v=${TOUR}&at=${id}`);
+  markers.clear();
+  for (const nid of LINKS[id] || []) {
+    const q = BYID[nid];
+    const dx = (q.x - here.x) / 100, dz = (q.y - here.y) / 100;     // plan cm -> metres; plan +y = three +z
+    const g = new THREE.Group(); g.position.set(dx, -here.z / 100 + 0.02, dz); g.userData.id = nid;
+    g.add(new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false })));
+    g.add(new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthTest: false })));
+    markers.add(g);
+  }
+  setTimeout(() => fade.style.opacity = 0, 30);
+}
+sel.onchange = () => go(sel.value);
+cfgSel.onchange = () => { TOUR = cfgSel.value; go(here.id); };     // same spot, same view direction
+
+// look around: drag (mouse or touch)
+let drag = null, moved = false;
+renderer.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, yaw, pitch }; moved = false; });
+addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+  yaw = drag.yaw + dx * 0.004; pitch = Math.max(-1.4, Math.min(1.4, drag.pitch + dy * 0.004));
+});
+addEventListener('pointerup', e => {
+  if (drag && !moved) {                      // click: jump to a marker
+    const ray = new THREE.Raycaster(), m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(m, camera);
+    const hit = ray.intersectObjects(markers.children, true)[0];
+    if (hit) go(hit.object.parent.userData.id);
+  }
+  drag = null;
+});
+addEventListener('wheel', e => { camera.fov = Math.max(35, Math.min(95, camera.fov + e.deltaY * 0.03)); camera.updateProjectionMatrix(); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => {
+  camera.rotation.set(0, 0, 0); camera.rotateY(yaw); camera.rotateX(pitch);
+  for (const g of markers.children) g.scale.setScalar(1 + 0.06 * Math.sin(performance.now() / 300));
+  renderer.render(scene, camera);
+});
+await go(BYID[Q.get('at')] ? Q.get('at') : 'living_1');
+</script>
+</body>
+</html>
